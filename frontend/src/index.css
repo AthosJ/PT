@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #3a0ca3;
+  --secondary: #7209b7;
+  --accent: #f72585;
+  --light: #f8f9fa;
+  --dark: #212529;
+  --success: #4cc9f0;
+  --gold: #ffd700;
+  --danger: #dc3545;
+}
+
+.text-primary {
+  color: var(--primary);
+}
+
+.btn {
+  @apply bg-[var(--primary)] text-white px-4 py-2 rounded font-medium hover:bg-[var(--secondary)] transition;
+}
+
+.btn-outline {
+  @apply border border-[var(--primary)] text-[var(--primary)] px-4 py-2 rounded font-medium hover:bg-[var(--primary)] hover:text-white transition;
+}
+
+.btn-danger {
+  @apply bg-[var(--danger)] text-white px-2 py-1 rounded hover:bg-red-700;
+}
+
+.btn-sm {
+  @apply px-2 py-1 text-sm;
+}
+
+.container {
+  @apply max-w-6xl mx-auto px-4 py-6;
+}
+
+.editor-header h1 {
+  @apply text-3xl font-bold text-primary;
+}
+
+.editor-tools {
+  @apply flex flex-wrap gap-4 mb-6;
+}
+
+.search-bar input {
+  @apply flex-1 px-4 py-2 border border-gray-300 rounded-l;
+}
+
+.search-bar button {
+  @apply btn rounded-r;
+}
