@@ -1,5 +1,5 @@
 // backend/config/db.js
-const path = require('path');
+/*const path = require('path');
 require('dotenv').config({
   path: path.resolve(
     __dirname,
@@ -39,4 +39,37 @@ const pool = new Pool({
     : false
 });
 
+module.exports = pool;*/
+
+// backend/config/db.js
+const path = require('path');
+require('dotenv').config({
+  path: path.resolve(
+    __dirname,
+    process.env.NODE_ENV === 'test' ? '.env.test' : '.env'
+  )
+});
+
+if (!process.env.DATABASE_URL) {
+  throw new Error(
+    `❌ Falta DATABASE_URL en ${
+      process.env.NODE_ENV === 'test' ? '.env.test' : '.env'
+    }`
+  );
+}
+
+const { Pool } = require('pg');
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production'
+    ? { rejectUnauthorized: false }
+    : false
+});
+
+console.log(
+  `Conectando a PostgreSQL (env=${process.env.NODE_ENV}) usando connectionString`
+);
+
 module.exports = pool;
+
