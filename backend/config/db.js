@@ -1,6 +1,10 @@
 // backend/config/db.js
+const path = require('path');
 require('dotenv').config({
-  path: process.env.NODE_ENV === 'test' ? '.env.test' : '.env'
+  path: path.resolve(
+    __dirname,
+    process.env.NODE_ENV === 'test' ? '.env.test' : '.env'
+  )
 });
 
 if (!process.env.DATABASE_URL) {
@@ -11,12 +15,12 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-const { parse }    = require('pg-connection-string');
-const { Pool }     = require('pg');
+const { parse } = require('pg-connection-string');
+const { Pool }  = require('pg');
 
 const config = parse(process.env.DATABASE_URL);
 
-// opcional: imprime para depurar
+// imprime info de conexión para depurar
 console.log(`Conectando a PostgreSQL (env=${process.env.NODE_ENV}):`, {
   host:     config.host,
   port:     config.port,
@@ -29,7 +33,10 @@ const pool = new Pool({
   port:     parseInt(config.port, 10),
   user:     config.user,
   password: config.password,
-  database: config.database
+  database: config.database,
+  ssl: process.env.NODE_ENV === 'production'
+    ? { rejectUnauthorized: false }
+    : false
 });
 
 module.exports = pool;
