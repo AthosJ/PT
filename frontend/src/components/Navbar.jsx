@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import jwt_decode from 'jwt-decode';
+import { jwtDecode } from 'jwt-decode';
+const jwt_decode = jwtDecode;
+
 
 export default function Navbar() {
   const navigate = useNavigate();
