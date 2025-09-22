@@ -48,21 +48,20 @@ const {
   editarCarta,
   eliminarCarta
 } = require('../controllers/cartaController');
-const {
-  verificarToken,
-  verificarAdmin
-} = require('../middleware/authMiddleware');
+const { verificarToken, verificarAdmin } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
+// Rutas públicas: cualquiera (incluso sin token) puede listar o ver detalles de cartas
 router.get('/', listarCartas);
 router.get('/:id', obtenerCartaPorId);
 
-// Protección: token válido + rol admin
-router.post('/', verificarToken, verificarAdmin, crearCarta);
+// Rutas protegidas: solo ADMIN puede crear, editar o eliminar cartas
+router.post('/',   verificarToken, verificarAdmin, crearCarta);
 router.put('/:id', verificarToken, verificarAdmin, editarCarta);
 router.delete('/:id', verificarToken, verificarAdmin, eliminarCarta);
 
 module.exports = router;
+
 
 
