@@ -1,7 +1,7 @@
 // src/components/Navbar.jsx
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import jwt_decode from 'jwt-decode';               // importar como default
+import { jwtDecode } from 'jwt-decode';    // importación correcta para Vite/Rollup
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -9,7 +9,7 @@ export default function Navbar() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    // 1) Si hay un objeto "user" guardado, úsalo primero
+    // 1) Si guardaste el objeto completo del usuario, úsalo primero
     const stored = localStorage.getItem('user');
     if (stored) {
       try {
@@ -20,15 +20,16 @@ export default function Navbar() {
       }
     }
 
-    // 2) Si no, intenta decodificar el token y extraer nombre + rol
+    // 2) Si no, decodifica el token y extrae nombre + rol
     const token = localStorage.getItem('token');
     if (token) {
       try {
-        const decoded = jwt_decode(token);
-        // Ajusta estos campos según tu payload real
+        const decoded = jwtDecode(token);
         const nombre = decoded.nombre ?? decoded.user?.nombre ?? '';
         const role   = decoded.role   ?? decoded.user?.role   ?? '';
-        setUser({ nombre, role });
+        const usr    = { nombre, role };
+        setUser(usr);
+        localStorage.setItem('user', JSON.stringify(usr));
       } catch {
         localStorage.removeItem('token');
       }
@@ -41,14 +42,12 @@ export default function Navbar() {
     navigate('/login');
   };
 
-  // Evitar split sobre undefined con optional chaining
- /* const initials = user?.nombre
-    ? user.nombre
-        .split(' ')
-        .map(p => p.charAt(0).toUpperCase())
-        .join('')
-        .slice(0, 2)
-    : '';*/
+  // Cálculo protegido de iniciales
+  const initials = user?.nombre
+    ?.split(' ')
+    .map(p => p.charAt(0).toUpperCase())
+    .join('')
+    .slice(0, 2) ?? '';
 
   return (
     <header className="bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] text-white shadow-md">
@@ -62,9 +61,7 @@ export default function Navbar() {
           <li>
             <Link
               to="/"
-              className={`hover:text-[var(--accent)] ${
-                location.pathname === '/' ? 'underline' : ''
-              }`}
+              className={`hover:text-[var(--accent)] ${location.pathname === '/' ? 'underline' : ''}`}
             >
               Inicio
             </Link>
@@ -72,9 +69,7 @@ export default function Navbar() {
           <li>
             <Link
               to="/dashboard"
-              className={`hover:text-[var(--accent)] ${
-                location.pathname === '/dashboard' ? 'underline' : ''
-              }`}
+              className={`hover:text-[var(--accent)] ${location.pathname === '/dashboard' ? 'underline' : ''}`}
             >
               Mazos
             </Link>
@@ -82,9 +77,7 @@ export default function Navbar() {
           <li>
             <Link
               to="/cartas"
-              className={`hover:text-[var(--accent)] ${
-                location.pathname === '/cartas' ? 'underline' : ''
-              }`}
+              className={`hover:text-[var(--accent)] ${location.pathname === '/cartas' ? 'underline' : ''}`}
             >
               Cartas
             </Link>
@@ -93,9 +86,7 @@ export default function Navbar() {
             <li>
               <Link
                 to="/admin"
-                className={`hover:text-[var(--accent)] ${
-                  location.pathname === '/admin' ? 'underline' : ''
-                }`}
+                className={`hover:text-[var(--accent)] ${location.pathname === '/admin' ? 'underline' : ''}`}
               >
                 Admin Panel
               </Link>
