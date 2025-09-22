@@ -70,24 +70,28 @@ async function init() {
     );
   `);
 
-  // 7. Claves foráneas
+  // 7. Claves foráneas idempotentes
   await pool.query(`
-    ALTER TABLE IF EXISTS public.mazo_cartas
+    ALTER TABLE public.mazo_cartas
+      DROP CONSTRAINT IF EXISTS mazo_cartas_mazo_id_fkey,
       ADD CONSTRAINT mazo_cartas_mazo_id_fkey FOREIGN KEY (mazo_id) REFERENCES public.mazos(id);
   `);
 
   await pool.query(`
-    ALTER TABLE IF EXISTS public.mazo_cartas
+    ALTER TABLE public.mazo_cartas
+      DROP CONSTRAINT IF EXISTS mazo_cartas_carta_id_fkey,
       ADD CONSTRAINT mazo_cartas_carta_id_fkey FOREIGN KEY (carta_id) REFERENCES public.cartas(id);
   `);
 
   await pool.query(`
-    ALTER TABLE IF EXISTS public.recomendaciones
+    ALTER TABLE public.recomendaciones
+      DROP CONSTRAINT IF EXISTS recomendaciones_mazo_id_fkey,
       ADD CONSTRAINT recomendaciones_mazo_id_fkey FOREIGN KEY (mazo_id) REFERENCES public.mazos(id) ON DELETE CASCADE;
   `);
 
   await pool.query(`
-    ALTER TABLE IF EXISTS public.recomendaciones
+    ALTER TABLE public.recomendaciones
+      DROP CONSTRAINT IF EXISTS recomendaciones_carta_id_fkey,
       ADD CONSTRAINT recomendaciones_carta_id_fkey FOREIGN KEY (carta_id) REFERENCES public.cartas(id) ON DELETE CASCADE;
   `);
 
