@@ -1,20 +1,33 @@
+// src/components/Navbar.jsx
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { jwtDecode } from 'jwt-decode';
-const jwt_decode = jwtDecode;
-
+import jwt_decode from 'jwt-decode';               // importar como default
 
 export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [user, setUser] = useState(null);
 
-  // Al montar, intenta leer y decodificar el token
   useEffect(() => {
+    // 1) Si hay un objeto "user" guardado, úsalo primero
+    const stored = localStorage.getItem('user');
+    if (stored) {
+      try {
+        setUser(JSON.parse(stored));
+        return;
+      } catch {
+        localStorage.removeItem('user');
+      }
+    }
+
+    // 2) Si no, intenta decodificar el token y extraer nombre + rol
     const token = localStorage.getItem('token');
     if (token) {
       try {
-        const { nombre, role } = jwt_decode(token);
+        const decoded = jwt_decode(token);
+        // Ajusta estos campos según tu payload real
+        const nombre = decoded.nombre ?? decoded.user?.nombre ?? '';
+        const role   = decoded.role   ?? decoded.user?.role   ?? '';
         setUser({ nombre, role });
       } catch {
         localStorage.removeItem('token');
@@ -24,11 +37,12 @@ export default function Navbar() {
 
   const handleLogout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
     navigate('/login');
   };
 
-  // Calcula iniciales (e.g., "Juan Gómez" → "JG")
-  const initials = user
+  // Evitar split sobre undefined con optional chaining
+  const initials = user?.nombre
     ? user.nombre
         .split(' ')
         .map(p => p.charAt(0).toUpperCase())
@@ -75,7 +89,6 @@ export default function Navbar() {
               Cartas
             </Link>
           </li>
-
           {user?.role === 'admin' && (
             <li>
               <Link
