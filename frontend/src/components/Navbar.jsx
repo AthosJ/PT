@@ -42,13 +42,13 @@ export default function Navbar() {
   };
 
   // Evitar split sobre undefined con optional chaining
-  const initials = user?.nombre
+ /* const initials = user?.nombre
     ? user.nombre
         .split(' ')
         .map(p => p.charAt(0).toUpperCase())
         .join('')
         .slice(0, 2)
-    : '';
+    : '';*/
 
   return (
     <header className="bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] text-white shadow-md">
