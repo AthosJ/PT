@@ -1,37 +1,44 @@
-// vite.config.js
-import { defineConfig } from 'vite';
-import react      from '@vitejs/plugin-react';
+// frontend/vite.config.js
+const { defineConfig } = require('vite');
 
-export default defineConfig({
-  plugins: [react()],
-  test: {
-    globals: true,                 // <-- restore globals
-    environment: 'jsdom',          // <-- browser-like DOM
-    setupFiles: './src/setupTests.js',
-    coverage: {
-      reporter: ['text', 'lcov'],
-      exclude: [
-        'node_modules',
-        'public',
-        'src/**/*.css',
+module.exports = async () => {
+  // Importa el plugin React (ESM-only) en tiempo de ejecución
+  const reactPlugin = (await import('@vitejs/plugin-react')).default;
 
-        // configs/build
-        'eslint.config.js',
-        'postcss.config.js',
-        'tailwind.config.js',
-        'vite.config.js',
+  return defineConfig({
+    plugins: [
+      reactPlugin()
+    ],
+    test: {
+      globals: true,
+      environment: 'jsdom',
+      setupFiles: './src/setupTests.js',
+      coverage: {
+        reporter: ['text', 'lcov'],
+        exclude: [
+          'node_modules',
+          'public',
+          'src/**/*.css',
 
-        // entrypoints & shell
-        'src/main.jsx',
-        'src/App.jsx',
+          // configs/build
+          'eslint.config.js',
+          'postcss.config.js',
+          'tailwind.config.js',
+          'vite.config.js',
 
-        // pages without tests yet
-        'src/pages/AdminPanel.jsx',
-        'src/pages/Dashboard.jsx',
-        'src/pages/Editor.jsx',
-        'src/pages/Home.jsx',
-        'src/pages/Profile.jsx'
-      ]
+          // entrypoints & shell
+          'src/main.jsx',
+          'src/App.jsx',
+
+          // pages sin tests aún
+          'src/pages/AdminPanel.jsx',
+          'src/pages/Dashboard.jsx',
+          'src/pages/Editor.jsx',
+          'src/pages/Home.jsx',
+          'src/pages/Profile.jsx'
+        ]
+      }
     }
-  }
-});
+    // agregar test restantes
+  });
+};
