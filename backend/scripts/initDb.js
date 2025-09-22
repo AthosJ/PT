@@ -1,5 +1,5 @@
 // scripts/initDb.js
-const pool = require('../backend/config/db');
+const pool = require('../config/db');
 
 async function init() {
   // 1. Tabla cartas
