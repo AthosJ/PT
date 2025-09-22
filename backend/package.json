@@ -6,7 +6,7 @@
     "dev": "nodemon index.js",
     "test": "cross-env NODE_ENV=test jest --config jest.config.js",
     "start": "node index.js",
-    "postinstall": "npm rebuild bcrypt --build-from-source",
+    "postinstall": "node node_modules/bcrypt/node_modules/node-pre-gyp/bin/node-pre-gyp install --fallback-to-build",
     "coverage": "cross-env NODE_ENV=test jest --coverage"
   },
   "dependencies": {
