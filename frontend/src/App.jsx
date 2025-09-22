@@ -19,7 +19,7 @@ function App() {
       <Route path="/register" element={<Register />} />
 
       {/* Rutas protegidas (usuarios y admins) */}
-      <Route element={<PrivateRoute allowedRoles={['user', 'admin']} />}>
+      <Route element={<PrivateRoute allowedRoles={['jugador', 'admin']} />}>
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
           <Route path="/dashboard" element={<Dashboard />} />
