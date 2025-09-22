@@ -1,7 +1,7 @@
 jest.setTimeout(20000);
 
 const request = require('supertest');
-const bcrypt  = require('bcrypt');
+const bcrypt  = require('bcryptjs');
 const jwt     = require('jsonwebtoken');
 const app     = require('../index');
 const pool    = require('../config/db');
