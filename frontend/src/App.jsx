@@ -10,6 +10,7 @@ import Editor from './pages/Editor';
 import Profile from './pages/Profile';
 import AdminPanel from './pages/AdminPanel';
 import Forbidden from './pages/Forbidden';
+import Cartas from './pages/Cartas'; // ← Importación agregada
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/editor/:mazoId" element={<Editor />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/cartas" element={<Cartas />} /> {/* ← Ruta agregada */}
         </Route>
       </Route>
 
