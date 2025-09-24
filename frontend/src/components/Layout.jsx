@@ -20,7 +20,7 @@ export default function Layout() {
           MyL DeckBuilder – Plataforma web de construcción de mazos del juego de
           cartas coleccionables Mitos y Leyendas
         </p>
-        <p>© 2025 – Proyecto de Título</p>
+        <p>© 2025 – Proyecto de Título - Jotaí</p>
       </footer>
     </div>
   );

@@ -10,7 +10,7 @@ import Editor from './pages/Editor';
 import Profile from './pages/Profile';
 import AdminPanel from './pages/AdminPanel';
 import Forbidden from './pages/Forbidden';
-import Cartas from './pages/Cartas'; // ← Importación agregada
+import Cartas from './pages/Cartas'; 
 
 function App() {
   return (
