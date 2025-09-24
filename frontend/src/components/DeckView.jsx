@@ -1,3 +1,4 @@
+//frontend/src/components/DeckView.jsx
 import React from 'react';
 
 export default function DeckView({ deck, onRemove }) {
