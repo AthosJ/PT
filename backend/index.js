@@ -46,6 +46,7 @@ app.use(express.json());
 app.use('/auth', authRoutes);
 app.use('/cartas', cartaRoutes);
 app.use('/mazos', mazoRoutes);
++app.use('/decks', mazoRoutes);
 app.use('/recomendaciones', recomendacionRoutes);
 
 // Error handler global (JSON)
