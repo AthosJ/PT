@@ -7,33 +7,30 @@ const {
   editarMazo,
   eliminarMazo
 } = require('../controllers/mazoController');
-
 const {
   listarCartasEnMazo,
   agregarCartaAlMazo,
   eliminarCartaDelMazo
 } = require('../controllers/mazoCartaController');
-
 const { verificarToken, verificarAdmin } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-// públicas
-router.get('/', listarMazos);
-router.get('/:id', obtenerMazoPorId);
+// Mazos: cada usuario autenticado ve solo los suyos
+router.get('/', verificarToken, listarMazos);
+router.get('/:id', verificarToken, obtenerMazoPorId);
 
-// subrutas para cartas dentro del mazo
+// Subrutas para gestionar cartas dentro de un mazo
 const cartaMazoRouter = express.Router({ mergeParams: true });
-
 cartaMazoRouter.get('/', listarCartasEnMazo);
 cartaMazoRouter.post('/', verificarToken, agregarCartaAlMazo);
 cartaMazoRouter.delete('/:cartaId', verificarToken, eliminarCartaDelMazo);
 
 router.use('/:id/cartas', cartaMazoRouter);
 
-// protegidas (solo admin)
-router.post('/', verificarToken, verificarAdmin, crearMazo);
-router.put('/:id', verificarToken, verificarAdmin, editarMazo);
-router.delete('/:id', verificarToken, verificarAdmin, eliminarMazo);
+// Creación, edición y eliminación de mazos (propietario validado en controlador)
+router.post('/', verificarToken, crearMazo);
+router.put('/:id', verificarToken, editarMazo);
+router.delete('/:id', verificarToken, eliminarMazo);
 
 module.exports = router;
