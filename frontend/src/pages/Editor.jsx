@@ -1,4 +1,5 @@
 // frontend/src/pages/Editor.jsx
+// frontend/src/pages/Editor.jsx
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import CardList from '../components/CardList';
@@ -11,15 +12,17 @@ export default function Editor() {
   const navigate = useNavigate();
   const [deck, setDeck] = useState([]);
   const [search, setSearch] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [msgSuccess, setMsgSuccess] = useState('');
 
   // Carga inicial de las cartas del mazo
   useEffect(() => {
     api.get(`/mazos/${mazoId}/cartas`)
-       .then(res => setDeck(res.data))
-       .catch(console.error);
+      .then(res => setDeck(res.data))
+      .catch(console.error);
   }, [mazoId]);
 
-  // Agrega carta al mazo (API + estado)
+  // Agrega carta al mazo (API + estado local)
   const addCard = async (card) => {
     try {
       const { data } = await api.post(
@@ -35,7 +38,7 @@ export default function Editor() {
     }
   };
 
-  // Elimina carta del mazo (API + estado)
+  // Elimina carta del mazo (API + estado local)
   const removeCard = async (cardId) => {
     try {
       await api.delete(`/mazos/${mazoId}/cartas/${cardId}`);
@@ -45,30 +48,46 @@ export default function Editor() {
     }
   };
 
-  // Guarda el mazo completo (sólo cartas) y redirige
+  // Guarda el mazo completo y muestra popup de éxito (sin redirect)
   const saveDeck = async () => {
+    setSaving(true);
     try {
       await api.put(`/mazos/${mazoId}`, {
         cartas: deck.map(c => ({ id: c.id, cantidad: c.cantidad }))
       });
-      navigate('/dashboard');
+      setMsgSuccess('¡Mazo guardado con éxito!');
     } catch (err) {
       console.error('Error guardando mazo', err);
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
-    <div className="container mx-auto px-6 py-8">
+    <div className="container mx-auto px-6 py-8 relative">
+
+      {/* Popup de éxito */}
+      {msgSuccess && (
+        <div className="fixed top-6 right-6 bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded shadow-lg flex items-center">
+          <span className="flex-1">{msgSuccess}</span>
+          <button
+            onClick={() => setMsgSuccess('')}
+            className="ml-4 text-green-700 hover:text-green-900"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       <div className="editor-header flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-primary">
-          Editor de Mazos
-        </h1>
+        <h1 className="text-3xl font-bold text-primary">Editor de Mazos</h1>
         <div className="flex gap-4">
           <button
             className="btn"
             onClick={saveDeck}
+            disabled={saving}
           >
-            Guardar Mazo
+            {saving ? 'Guardando…' : 'Guardar Mazo'}
           </button>
           <button
             className="btn-outline"
@@ -97,10 +116,7 @@ export default function Editor() {
       <div className="editor-container grid grid-cols-1 md:grid-cols-2 gap-8">
         <div>
           <h2 className="text-xl font-semibold mb-4">Cartas Disponibles</h2>
-          <CardList
-            onAdd={addCard}
-            search={search}
-          />
+          <CardList onAdd={addCard} search={search} />
         </div>
 
         <div>
