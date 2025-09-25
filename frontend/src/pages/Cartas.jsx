@@ -1,65 +1,161 @@
 import { useEffect, useState } from 'react';
 import api from '../api';
+import cardsData from '../../backend/cards.json'; // para razas únicas
 
-export default function CardList({ onAdd, search = '' }) {
-  const [cards, setCards] = useState([]);
-  const [loading, setLoading] = useState(true);
+export default function Cartas() {
+  const [cartas, setCartas] = useState([]);
+  const [search, setSearch] = useState('');
+  const [filtros, setFiltros] = useState({
+    tipo: '',
+    coste: '',
+    raza: ''
+  });
+  const [showFilters, setShowFilters] = useState(false);
 
+  // Carga de cartas desde backend
   useEffect(() => {
-    console.log('CardList: fetching /cartas');
-    setLoading(true);
-
-    // Pedimos sin cache para evitar 304 sin body durante las pruebas
-    api.get('/cartas', { headers: { 'Cache-Control': 'no-cache' } })
-      .then(res => {
-        console.log('CardList: GET /cartas res.status', res.status, 'res.data', res.data);
-        setCards(Array.isArray(res.data) ? res.data : []);
-      })
-      .catch(err => {
-        console.error('CardList: GET /cartas error', err);
-        setCards([]);
-      })
-      .finally(() => setLoading(false));
+    api.get('/cartas')
+      .then(res => setCartas(res.data))
+      .catch(console.error);
   }, []);
 
-  // Protección: card.nombre y search pueden ser undefined
-  const q = (search || '').toString().toLowerCase();
+  // Razas únicas desde cards.json
+  const razas = Array.from(new Set(cardsData.map(c => c.raza))).sort();
 
-  const filtered = cards.filter(c =>
-    ((c && c.nombre) || '').toString().toLowerCase().includes(q)
-  );
-
-  if (loading) {
-    return <p className="text-center text-gray-600">Cargando cartas...</p>;
-  }
+  // Filtrado local
+  const term = search.toLowerCase();
+  const filtradas = cartas
+    .filter(c => c.nombre.toLowerCase().includes(term))
+    .filter(c => !filtros.tipo || c.tipo === filtros.tipo)
+    .filter(c => {
+      if (!filtros.coste) return true;
+      if (filtros.coste === 'Sin coste') return c.coste === 0;
+      if (filtros.coste === '5+') return c.coste >= 5;
+      return c.coste === Number(filtros.coste);
+    })
+    .filter(c => !filtros.raza || c.raza === filtros.raza);
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {filtered.map(card => (
-        <div
-          key={card.id}
-          className="border border-gray-300 rounded-lg p-4 shadow-sm bg-white hover:shadow-md transition"
-        >
-          <h4 className="text-lg font-semibold text-primary mb-1">{card.nombre}</h4>
-          <p className="text-sm text-gray-600">
-            Tipo: <span className="font-medium">{card.tipo}</span><br />
-            Rareza: <span className="font-medium">{card.rareza}</span><br />
-            Coste: <span className="font-medium">{card.coste}</span>
-          </p>
-          <button
-            onClick={() => onAdd(card)}
-            className="btn-sm btn mt-3 w-full"
-          >
-            Agregar al Mazo
-          </button>
-        </div>
-      ))}
+    <div className="container mx-auto px-6 py-8">
+      <h1 className="text-3xl font-bold mb-6">Listado de Cartas</h1>
 
-      {filtered.length === 0 && !loading && (
-        <p className="col-span-full text-center text-gray-500 mt-4">
-          No se encontraron cartas con ese nombre.
-        </p>
+      {/* Buscador y filtros */}
+      <div className="flex flex-wrap gap-4 mb-6">
+        <div className="flex flex-1">
+          <input
+            type="text"
+            placeholder="Buscar cartas..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="flex-1 px-4 py-2 border rounded-l"
+          />
+          <button type="button" className="btn rounded-r">Buscar</button>
+        </div>
+
+        <button
+          type="button"
+          className="btn-outline"
+          onClick={() => setShowFilters(f => !f)}
+        >
+          Filtros Avanzados
+        </button>
+      </div>
+
+      {/* Panel de filtros */}
+      {showFilters && (
+        <div className="mb-6 p-4 border rounded bg-gray-50">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Tipo */}
+            <div>
+              <label className="block mb-1">Tipo</label>
+              <select
+                className="w-full border px-2 py-1"
+                value={filtros.tipo}
+                onChange={e =>
+                  setFiltros(f => ({ ...f, tipo: e.target.value }))
+                }
+              >
+                <option value="">Todos</option>
+                <option value="Aliado">Aliado</option>
+                <option value="Arma">Arma</option>
+                <option value="Totem">Tótem</option>
+                <option value="Talisman">Talismán</option>
+                <option value="Oro">Oro</option>
+              </select>
+            </div>
+
+            {/* Coste */}
+            <div>
+              <label className="block mb-1">Coste</label>
+              <select
+                className="w-full border px-2 py-1"
+                value={filtros.coste}
+                onChange={e =>
+                  setFiltros(f => ({ ...f, coste: e.target.value }))
+                }
+              >
+                <option value="">Todos</option>
+                <option value="Sin coste">Sin coste</option>
+                <option value="0">0</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5+">5 o más</option>
+              </select>
+            </div>
+
+            {/* Raza */}
+            <div>
+              <label className="block mb-1">Raza</label>
+              <select
+                className="w-full border px-2 py-1"
+                value={filtros.raza}
+                onChange={e =>
+                  setFiltros(f => ({ ...f, raza: e.target.value }))
+                }
+              >
+                <option value="">Todas</option>
+                {razas.map(rz => (
+                  <option key={rz} value={rz}>
+                    {rz}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
       )}
+
+      {/* Tabla de cartas */}
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="border-b bg-gray-100">
+              <th className="text-left py-2 px-3">Nombre</th>
+              <th className="text-left py-2 px-3">Tipo</th>
+              <th className="text-left py-2 px-3">Rareza</th>
+              <th className="text-left py-2 px-3">Coste</th>
+              <th className="text-left py-2 px-3">Fuerza</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtradas.map(c => (
+              <tr key={c.id} className="border-b hover:bg-gray-50">
+                <td className="py-2 px-3">{c.nombre}</td>
+                <td className="py-2 px-3">{c.tipo}</td>
+                <td className="py-2 px-3">{c.rareza}</td>
+                <td className="py-2 px-3">
+                  {c.tipo === 'Oro' ? 'Sin coste' : c.coste}
+                </td>
+                <td className="py-2 px-3">
+                  {c.tipo === 'Aliado' ? c.fuerza : '-'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
