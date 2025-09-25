@@ -3,7 +3,7 @@ const pool = require('../config/db');
 
 async function crearMazo(req, res, next) {
   const { nombre, descripcion } = req.body;
-  const usuario_id = req.user?.id;        
+  const usuario_id = req.user?.id;
 
   if (!nombre || !descripcion || !usuario_id) {
     return res.status(400).json({ error: 'Faltan campos obligatorios' });
@@ -54,32 +54,70 @@ async function obtenerMazoPorId(req, res, next) {
 
 async function editarMazo(req, res, next) {
   const { id } = req.params;
-  const campos = req.body;
-  const keys = Object.keys(campos);
+  const { nombre, descripcion, cartas } = req.body;
 
-  if (keys.length === 0) {
-    return res.status(400).json({ error: 'Sin campos para actualizar' });
-  }
-
-  const set = keys.map((k, i) => `${k} = $${i + 1}`).join(', ');
-  const values = Object.values(campos);
-
+  const client = await pool.connect();
   try {
-    const result = await pool.query(
-      `UPDATE mazos
-          SET ${set}
-        WHERE id = $${keys.length + 1}
-      RETURNING id, nombre, descripcion, fecha_creacion`,
-      [...values, id]
-    );
+    await client.query('BEGIN');
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Mazo no encontrado' });
+    // 1) Actualizar nombre/descr si llegaron
+    const updates = [];
+    const vals = [];
+    let idx = 1;
+    if (nombre) {
+      updates.push(`nombre = $${idx++}`);
+      vals.push(nombre);
+    }
+    if (descripcion) {
+      updates.push(`descripcion = $${idx++}`);
+      vals.push(descripcion);
+    }
+    if (updates.length) {
+      vals.push(id);
+      await client.query(
+        `UPDATE mazos SET ${updates.join(', ')} WHERE id = $${idx}`,
+        vals
+      );
     }
 
-    return res.status(200).json(result.rows[0]);
+    // 2) Sincronizar cartas si llega el array
+    if (Array.isArray(cartas)) {
+      // 2.a) Borrar vínculos removidos
+      if (cartas.length) {
+        const placeholders = cartas.map((_, i) => `$${i + 2}`).join(',');
+        await client.query(
+          `DELETE FROM mazo_cartas
+             WHERE mazo_id = $1
+               AND carta_id NOT IN (${placeholders})`,
+          [id, ...cartas.map(c => c.id)]
+        );
+      } else {
+        // si el array viene vacío, borra todo
+        await client.query(
+          `DELETE FROM mazo_cartas WHERE mazo_id = $1`,
+          [id]
+        );
+      }
+
+      // 2.b) Upsert de cada carta
+      for (const { id: cartaId, cantidad } of cartas) {
+        await client.query(
+          `INSERT INTO mazo_cartas (mazo_id, carta_id, cantidad)
+             VALUES ($1, $2, $3)
+           ON CONFLICT (mazo_id, carta_id)
+             DO UPDATE SET cantidad = EXCLUDED.cantidad`,
+          [id, cartaId, cantidad]
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+    return res.status(200).json({ message: 'Mazo guardado correctamente' });
   } catch (err) {
+    await client.query('ROLLBACK');
     next(err);
+  } finally {
+    client.release();
   }
 }
 
@@ -87,9 +125,7 @@ async function eliminarMazo(req, res, next) {
   const { id } = req.params;
   try {
     const result = await pool.query(
-      `DELETE FROM mazos
-        WHERE id = $1
-      RETURNING id`,
+      `DELETE FROM mazos WHERE id = $1 RETURNING id`,
       [id]
     );
     if (result.rows.length === 0) {
