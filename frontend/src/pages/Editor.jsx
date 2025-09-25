@@ -1,28 +1,33 @@
-// frontend/src/pages/Editor.jsx
-
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import CardList from '../components/CardList';
 import DeckView from '../components/DeckView';
 import Recommendations from '../components/Recommendations';
 import api from '../api';
+// Importamos el JSON de cartas para extraer razas
+import cardsData from '../../../backend/cards.json';
 
 export default function Editor() {
   const { mazoId } = useParams();
   const navigate = useNavigate();
 
   const [deck, setDeck] = useState([]);
-  const [initialDeck, setInitialDeck] = useState([]);       // ← punto 5
+  const [initialDeck, setInitialDeck] = useState([]);
   const [search, setSearch] = useState('');
   const [saving, setSaving] = useState(false);
   const [msgSuccess, setMsgSuccess] = useState('');
   const [msgError, setMsgError] = useState('');
-  const [showFilters, setShowFilters] = useState(false);     // ← punto 6
+  const [showFilters, setShowFilters] = useState(false);
   const [filtros, setFiltros] = useState({
-    tipo: '', coste: '', raza: ''
+    tipo: '',
+    coste: '',
+    raza: ''
   });
 
-  // 1) Carga inicial del mazo (y guardamos copia para “undo”)
+  // Extraemos y ordenamos las razas únicas del JSON
+  const razas = Array.from(new Set(cardsData.map(c => c.raza))).sort();
+
+  // Carga inicial del mazo (y guardamos copia para “undo”)
   useEffect(() => {
     api.get(`/mazos/${mazoId}/cartas`)
       .then(res => {
@@ -32,7 +37,7 @@ export default function Editor() {
       .catch(console.error);
   }, [mazoId]);
 
-  // 2) Añadir carta (con validación de 3 ejemplares)
+  // Añadir carta con validación de 3 ejemplares
   const addCard = async (card) => {
     const existente = deck.find(c => c.id === card.id);
     if (existente && existente.cantidad >= 3) {
@@ -47,30 +52,28 @@ export default function Editor() {
       setDeck(prev => {
         const idx = prev.findIndex(c => c.id === card.id);
         if (idx >= 0) {
-          const copy = [...prev];
-          copy[idx] = { ...copy[idx], cantidad: data.cantidad };
-          return copy;
+          const updated = [...prev];
+          updated[idx] = { ...updated[idx], cantidad: data.cantidad };
+          return updated;
         }
         return [...prev, { ...card, cantidad: data.cantidad }];
       });
-    } catch (err) {
-      console.error(err);
+    } catch {
       setMsgError('Error al agregar la carta. Intenta de nuevo.');
     }
   };
 
-  // 3) Eliminar carta
+  // Eliminar carta del mazo
   const removeCard = async (cardId) => {
     try {
       await api.delete(`/mazos/${mazoId}/cartas/${cardId}`);
       setDeck(prev => prev.filter(c => c.id !== cardId));
-    } catch (err) {
-      console.error(err);
+    } catch {
       setMsgError('Error al eliminar la carta. Intenta de nuevo.');
     }
   };
 
-  // 4) Guardar mazo con popup (sin redirect)
+  // Guardar mazo con popup de éxito (sin redirect)
   const saveDeck = async () => {
     setSaving(true);
     try {
@@ -79,16 +82,15 @@ export default function Editor() {
       });
       setMsgSuccess('¡Mazo guardado con éxito!');
       setMsgError('');
-      setInitialDeck(deck);  // actualizamos punto de “undo”
-    } catch (err) {
-      console.error(err);
+      setInitialDeck(deck);
+    } catch {
       setMsgError('Error al guardar el mazo. Intenta de nuevo.');
     } finally {
       setSaving(false);
     }
   };
 
-  // 5) Deshacer: restaura estado al último guardado
+  // Deshacer: restaura el mazo al último guardado
   const undoChanges = () => {
     setDeck(initialDeck);
     setMsgError('');
@@ -98,7 +100,7 @@ export default function Editor() {
   return (
     <div className="container mx-auto px-6 py-8 relative">
 
-      {/* POPUPS */}
+      {/* Popups de éxito y error */}
       {msgSuccess && (
         <div className="fixed top-6 right-6 bg-green-100 border-green-400 text-green-700 px-4 py-2 rounded shadow flex items-center">
           <span className="flex-1">{msgSuccess}</span>
@@ -120,7 +122,7 @@ export default function Editor() {
         </div>
       )}
 
-      {/* HEADER */}
+      {/* Header */}
       <div className="editor-header flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Editor de Mazos</h1>
         <div className="flex gap-4">
@@ -142,7 +144,7 @@ export default function Editor() {
         </div>
       </div>
 
-      {/* HERRAMIENTAS */}
+      {/* Herramientas: búsqueda, filtros y deshacer */}
       <div className="editor-tools flex flex-wrap gap-4 mb-6">
         <div className="search-bar flex flex-1">
           <input
@@ -155,7 +157,6 @@ export default function Editor() {
           <button type="button" className="btn rounded-r">Buscar</button>
         </div>
 
-        {/* Punto 6: Toggle de filtros */}
         <button
           type="button"
           className="btn-outline"
@@ -164,7 +165,6 @@ export default function Editor() {
           Filtros Avanzados
         </button>
 
-        {/* Punto 5: Deshacer */}
         <button
           type="button"
           className="btn"
@@ -218,7 +218,7 @@ export default function Editor() {
               </select>
             </div>
 
-            {/* Raza */}
+            {/* Raza dinámico */}
             <div>
               <label className="block mb-1">Raza</label>
               <select
@@ -229,32 +229,34 @@ export default function Editor() {
                 }
               >
                 <option value="">Todas</option>
-                <option value="Vestaelo">Vestaelo</option>
-                <option value="Ánima">Ánima</option>
-                <option value="Drakos">Drakos</option>
-                {/* agrega aquí más razas según tu DB */}
+                {razas.map(rz => (
+                  <option key={rz} value={rz}>
+                    {rz}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
         </div>
       )}
 
-      {/* CONTENIDO */}
+      {/* Contenido: lista de cartas y vista del mazo */}
       <div className="editor-container grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div>
+        <section>
           <h2 className="text-xl font-semibold mb-4">Cartas Disponibles</h2>
           <CardList
             onAdd={addCard}
             search={search}
-            filtros={filtros}             // pasamos filtros al listado
+            filtros={filtros}
           />
-        </div>
-        <div>
+        </section>
+        <section>
           <h2 className="text-xl font-semibold mb-4">Vista del Mazo</h2>
           <DeckView deck={deck} onRemove={removeCard} />
-        </div>
+        </section>
       </div>
 
+      {/* Recomendaciones */}
       <div className="mt-10">
         <h3 className="text-xl font-semibold mb-4">
           Recomendaciones de compra
