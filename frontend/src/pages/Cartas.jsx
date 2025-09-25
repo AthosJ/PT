@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+//frontend/src/pages/Cartas.jsx
+
+import { useEffect, useMemo, useState } from 'react';
 import api from '../api';
-import cardsData from '../../backend/cards.json';
 
 export default function Cartas() {
   const [cartas, setCartas] = useState([]);
@@ -8,28 +9,32 @@ export default function Cartas() {
   const [filtros, setFiltros] = useState({ tipo: '', coste: '', raza: '' });
   const [showFilters, setShowFilters] = useState(false);
 
-  // Carga inicial
+  // 1) Carga todas las cartas en un solo fetch
   useEffect(() => {
     api.get('/cartas')
       .then(res => setCartas(res.data))
       .catch(console.error);
   }, []);
 
-  // Raza dinámicas
-  const razas = Array.from(new Set(cardsData.map(c => c.raza))).sort();
+  // 2) Extrae razas únicas a partir del resultado del API
+  const razas = useMemo(() => {
+    return Array.from(new Set(cartas.map(c => c.raza))).sort();
+  }, [cartas]);
 
-  // Filtrado
+  // 3) Aplica búsqueda y filtros
   const term = search.toLowerCase();
-  const filtradas = cartas
-    .filter(c => c.nombre.toLowerCase().includes(term))
-    .filter(c => !filtros.tipo || c.tipo === filtros.tipo)
-    .filter(c => {
-      if (!filtros.coste) return true;
-      if (filtros.coste === 'Sin coste') return c.coste === 0;
-      if (filtros.coste === '5+') return c.coste >= 5;
-      return c.coste === Number(filtros.coste);
-    })
-    .filter(c => !filtros.raza || c.raza === filtros.raza);
+  const filtradas = useMemo(() => {
+    return cartas
+      .filter(c => c.nombre.toLowerCase().includes(term))
+      .filter(c => !filtros.tipo || c.tipo === filtros.tipo)
+      .filter(c => {
+        if (!filtros.coste) return true;
+        if (filtros.coste === 'Sin coste') return c.coste === 0;
+        if (filtros.coste === '5+') return c.coste >= 5;
+        return c.coste === Number(filtros.coste);
+      })
+      .filter(c => !filtros.raza || c.raza === filtros.raza);
+  }, [cartas, term, filtros]);
 
   return (
     <div className="container mx-auto px-6 py-8">
@@ -56,10 +61,11 @@ export default function Cartas() {
         </button>
       </div>
 
-      {/* Panel Filtros */}
+      {/* Panel de filtros */}
       {showFilters && (
         <div className="mb-6 p-4 border rounded bg-gray-50">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
             {/* Tipo */}
             <div>
               <label className="block mb-1">Tipo</label>
@@ -76,6 +82,7 @@ export default function Cartas() {
                 <option value="Oro">Oro</option>
               </select>
             </div>
+
             {/* Coste */}
             <div>
               <label className="block mb-1">Coste</label>
@@ -94,7 +101,8 @@ export default function Cartas() {
                 <option value="5+">5 o más</option>
               </select>
             </div>
-            {/* Raza */}
+
+            {/* Raza (de la API) */}
             <div>
               <label className="block mb-1">Raza</label>
               <select
@@ -112,7 +120,7 @@ export default function Cartas() {
         </div>
       )}
 
-      {/* Tabla */}
+      {/* Tabla de cartas */}
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
