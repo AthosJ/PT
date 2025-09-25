@@ -1,48 +1,57 @@
-//frontend/src/components/CardList.jsx
+// frontend/src/components/CardList.jsx
+
 import { useEffect, useState } from 'react';
 import api from '../api';
 
-export default function CardList({ onAdd, search = '' }) {
+export default function CardList({ onAdd, search = '', filtros = {} }) {
   const [cards, setCards] = useState([]);
 
   useEffect(() => {
-    api.get('/cartas').then(res => setCards(res.data));
+    api.get('/cartas')
+      .then(res => setCards(res.data))
+      .catch(console.error);
   }, []);
 
-  // Normalizamos el término de búsqueda y el nombre de cada carta
-  const term = search?.toLowerCase() ?? '';
-  const filtered = cards.filter(c =>
-    (c.nombre ?? '').toLowerCase().includes(term)
-  );
+  const term = search.toLowerCase();
+
+  const filtered = cards
+    // búsqueda por nombre
+    .filter(c => c.nombre.toLowerCase().includes(term))
+    // filtro por tipo
+    .filter(c => !filtros.tipo || c.tipo === filtros.tipo)
+    // filtro por coste
+    .filter(c => {
+      if (!filtros.coste) return true;
+      if (filtros.coste === 'Sin coste') return c.coste === 0;
+      if (filtros.coste === '5+') return c.coste >= 5;
+      return c.coste === Number(filtros.coste);
+    })
+    // filtro por raza
+    .filter(c => !filtros.raza || c.raza === filtros.raza);
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <ul className="space-y-2 overflow-y-auto max-h-[600px]">
       {filtered.map(card => (
-        <div
+        <li
           key={card.id}
-          className="border border-gray-300 rounded-lg p-4 shadow-sm bg-white hover:shadow-md transition"
+          className="flex justify-between items-center p-2 border rounded hover:bg-gray-50"
         >
-          <h4 className="text-lg font-semibold text-primary mb-1">
-            {card.nombre}
-          </h4>
-          <p className="text-sm text-gray-600">
-            Tipo: <span className="font-medium">{card.tipo}</span><br />
-            Rareza: <span className="font-medium">{card.rareza}</span><br />
-            Coste: <span className="font-medium">{card.coste}</span>
-          </p>
+          <div>
+            <h5 className="font-semibold">{card.nombre}</h5>
+            <p className="text-sm text-gray-600">
+              {card.tipo} – {card.raza} – Coste:{' '}
+              {card.tipo === 'Oro' ? 'Sin coste' : card.coste}
+            </p>
+          </div>
           <button
+            type="button"
+            className="btn btn-outline-primary"
             onClick={() => onAdd(card)}
-            className="btn-sm btn mt-3 w-full"
           >
             Agregar al Mazo
           </button>
-        </div>
+        </li>
       ))}
-      {filtered.length === 0 && (
-        <p className="col-span-full text-center text-gray-500 mt-4">
-          No se encontraron cartas con ese nombre.
-        </p>
-      )}
-    </div>
+    </ul>
   );
 }
