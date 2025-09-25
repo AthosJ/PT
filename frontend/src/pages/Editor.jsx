@@ -191,8 +191,8 @@ export default function Editor() {
                 <option value="">Todos</option>
                 <option value="Aliado">Aliado</option>
                 <option value="Arma">Arma</option>
-                <option value="Tótem">Tótem</option>
-                <option value="Talismán">Talismán</option>
+                <option value="Tótem">Totem</option>
+                <option value="Talismán">Talisman</option>
                 <option value="Oro">Oro</option>
               </select>
             </div>

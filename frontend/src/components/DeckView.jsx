@@ -1,51 +1,64 @@
-//frontend/src/components/DeckView.jsx
+// frontend/src/components/DeckView.jsx
+
 import React from 'react';
 
 export default function DeckView({ deck, onRemove }) {
-  const totalCartas = deck.length;
-  const costePromedio = deck.length
-    ? (deck.reduce((sum, c) => sum + c.coste, 0) / deck.length).toFixed(2)
-    : 0;
+  // Total de cartas en el mazo
+  const totalCartas = deck.reduce((sum, c) => sum + c.cantidad, 0);
+
+  // Agrupamos las cartas por tipo
+  const gruposPorTipo = deck.reduce((acc, carta) => {
+    const { tipo } = carta;
+    if (!acc[tipo]) acc[tipo] = [];
+    acc[tipo].push(carta);
+    return acc;
+  }, {});
 
   return (
-    <div className="bg-white border border-gray-300 rounded-lg p-6 shadow-sm">
-      <h2 className="text-xl font-semibold mb-4 text-primary">Vista del Mazo</h2>
-
-      <div className="mb-4 text-sm text-gray-700">
-        <p>
-          Total de cartas: <span className="font-medium">{totalCartas}</span>
-        </p>
-        <p>
-          Coste promedio: <span className="font-medium">{costePromedio}</span>
-        </p>
+    <div className="p-4 bg-white border rounded shadow-sm">
+      {/* Total general */}
+      <div className="mb-6">
+        <p className="text-xl font-semibold">Total de cartas: {totalCartas}</p>
       </div>
 
-      {deck.length === 0 ? (
-        <p className="text-gray-500">No hay cartas en el mazo aún.</p>
-      ) : (
-        <ul className="space-y-3">
-          {deck.map((card) => (
-            <li
-              key={card.id}
-              className="flex justify-between items-center border border-gray-200 rounded px-4 py-2 hover:bg-gray-50 transition"
-            >
-              <div>
-                <p className="font-semibold text-primary">{card.nombre}</p>
-                <p className="text-sm text-gray-600">
-                  Tipo: {card.tipo} | Rareza: {card.rareza} | Coste: {card.coste}
-                </p>
-              </div>
-              {/* Aquí llamamos a onRemove para notificar al padre */}
-              <button
-                onClick={() => onRemove(card.id)}
-                className="btn-danger btn-sm"
-              >
-                Quitar
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      {/* Secciones por tipo */}
+      {Object.entries(gruposPorTipo).map(([tipo, cartas]) => {
+        const totalEsteTipo = cartas.reduce((sum, c) => sum + c.cantidad, 0);
+        return (
+          <section key={tipo} className="mb-8">
+            <h2 className="text-lg font-bold mb-2">
+              {tipo} ({totalEsteTipo})
+            </h2>
+
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="border-b">
+                  <th className="py-1 text-left">Cant.</th>
+                  <th className="py-1 text-left">Nombre</th>
+                  <th className="py-1"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {cartas.map(c => (
+                  <tr key={c.id} className="border-b hover:bg-gray-50">
+                    <td className="py-1">{c.cantidad}</td>
+                    <td className="py-1">{c.nombre}</td>
+                    <td className="py-1 text-right">
+                      <button
+                        type="button"
+                        className="text-red-500 hover:text-red-700"
+                        onClick={() => onRemove(c.id)}
+                      >
+                        Quitar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+        );
+      })}
     </div>
   );
 }
