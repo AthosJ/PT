@@ -10,6 +10,7 @@ export default function Editor() {
   const { mazoId } = useParams();
   const navigate = useNavigate();
   const [deck, setDeck] = useState([]);
+  const [search, setSearch] = useState('');
 
   // Carga inicial de las cartas del mazo
   useEffect(() => {
@@ -18,7 +19,7 @@ export default function Editor() {
        .catch(console.error);
   }, [mazoId]);
 
-  // Agrega una carta en el backend y en el estado local
+  // Agrega carta al mazo (API + estado)
   const addCard = async (card) => {
     try {
       const { data } = await api.post(
@@ -34,7 +35,7 @@ export default function Editor() {
     }
   };
 
-  // Elimina una carta en el backend y en el estado local
+  // Elimina carta del mazo (API + estado)
   const removeCard = async (cardId) => {
     try {
       await api.delete(`/mazos/${mazoId}/cartas/${cardId}`);
@@ -44,7 +45,7 @@ export default function Editor() {
     }
   };
 
-  // Guarda el mazo completo (solo cartas) y redirige
+  // Guarda el mazo completo (sólo cartas) y redirige
   const saveDeck = async () => {
     try {
       await api.put(`/mazos/${mazoId}`, {
@@ -83,6 +84,8 @@ export default function Editor() {
           <input
             type="text"
             placeholder="Buscar cartas..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
             className="flex-1 px-4 py-2 border border-gray-300 rounded-l"
           />
           <button className="btn rounded-r">Buscar</button>
@@ -93,16 +96,15 @@ export default function Editor() {
 
       <div className="editor-container grid grid-cols-1 md:grid-cols-2 gap-8">
         <div>
-          <h2 className="text-xl font-semibold mb-4">
-            Cartas Disponibles
-          </h2>
-          <CardList onAdd={addCard} />
+          <h2 className="text-xl font-semibold mb-4">Cartas Disponibles</h2>
+          <CardList
+            onAdd={addCard}
+            search={search}
+          />
         </div>
 
         <div>
-          <h2 className="text-xl font-semibold mb-4">
-            Vista del Mazo
-          </h2>
+          <h2 className="text-xl font-semibold mb-4">Vista del Mazo</h2>
           <DeckView deck={deck} onRemove={removeCard} />
         </div>
       </div>
@@ -116,4 +118,3 @@ export default function Editor() {
     </div>
   );
 }
-

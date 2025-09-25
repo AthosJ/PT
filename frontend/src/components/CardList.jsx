@@ -1,15 +1,18 @@
+//frontend/src/components/CardList.jsx
 import { useEffect, useState } from 'react';
 import api from '../api';
 
-export default function CardList({ onAdd, search }) {
+export default function CardList({ onAdd, search = '' }) {
   const [cards, setCards] = useState([]);
 
   useEffect(() => {
     api.get('/cartas').then(res => setCards(res.data));
   }, []);
 
+  // Normalizamos el término de búsqueda y el nombre de cada carta
+  const term = search?.toLowerCase() ?? '';
   const filtered = cards.filter(c =>
-    c.nombre.toLowerCase().includes(search.toLowerCase())
+    (c.nombre ?? '').toLowerCase().includes(term)
   );
 
   return (
@@ -19,7 +22,9 @@ export default function CardList({ onAdd, search }) {
           key={card.id}
           className="border border-gray-300 rounded-lg p-4 shadow-sm bg-white hover:shadow-md transition"
         >
-          <h4 className="text-lg font-semibold text-primary mb-1">{card.nombre}</h4>
+          <h4 className="text-lg font-semibold text-primary mb-1">
+            {card.nombre}
+          </h4>
           <p className="text-sm text-gray-600">
             Tipo: <span className="font-medium">{card.tipo}</span><br />
             Rareza: <span className="font-medium">{card.rareza}</span><br />
