@@ -11,7 +11,7 @@ import Editor from './pages/Editor';
 import Profile from './pages/Profile';
 import AdminPanel from './pages/AdminPanel';
 import Forbidden from './pages/Forbidden';
-import Cartas from './pages/Cartas'; 
+import Cartas from './pages/Cartas'; // ✅ Import correcto
 
 function App() {
   return (
@@ -19,6 +19,7 @@ function App() {
       {/* Rutas públicas */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/cartas" element={<Cartas />} /> {/* ✅ Ruta pública actualizada */}
 
       {/* Rutas protegidas (usuarios y admins) */}
       <Route element={<PrivateRoute allowedRoles={['jugador', 'admin']} />}>
@@ -27,7 +28,6 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/editor/:mazoId" element={<Editor />} />
           <Route path="/profile" element={<Profile />} />
-          <Route path="/cartas" element={<Cartas />} /> {/* ← Ruta agregada */}
         </Route>
       </Route>
 
@@ -48,3 +48,4 @@ function App() {
 }
 
 export default App;
+
