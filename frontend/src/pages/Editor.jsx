@@ -15,6 +15,7 @@ export default function Editor() {
   const [search, setSearch] = useState('');
   const [saving, setSaving] = useState(false);
   const [msgSuccess, setMsgSuccess] = useState('');
+  const [msgError, setMsgError] = useState('');
 
   // Carga inicial de las cartas del mazo
   useEffect(() => {
@@ -23,19 +24,35 @@ export default function Editor() {
       .catch(console.error);
   }, [mazoId]);
 
-  // Agrega carta al mazo
+  // Agrega carta al mazo con límite de 3 ejemplares
   const addCard = async (card) => {
+    // Validación en frontend
+    const existente = deck.find(c => c.id === card.id);
+    if (existente && existente.cantidad >= 3) {
+      setMsgError('No puedes agregar más de 3 ejemplares de esta carta.');
+      return;
+    }
+
     try {
+      // Llamada al backend: añade o incrementa cantidad
       const { data } = await api.post(
         `/mazos/${mazoId}/cartas`,
         { carta_id: card.id, cantidad: 1 }
       );
-      setDeck(prev => [
-        ...prev,
-        { ...card, cantidad: data.cantidad }
-      ]);
+      setDeck(prev => {
+        const idx = prev.findIndex(c => c.id === card.id);
+        if (idx >= 0) {
+          // actualizar cantidad existente
+          const updated = [...prev];
+          updated[idx] = { ...updated[idx], cantidad: data.cantidad };
+          return updated;
+        }
+        // nueva carta
+        return [...prev, { ...card, cantidad: data.cantidad }];
+      });
     } catch (err) {
       console.error('Error añadiendo carta', err);
+      setMsgError('Error al agregar la carta. Intenta de nuevo.');
     }
   };
 
@@ -46,15 +63,12 @@ export default function Editor() {
       setDeck(prev => prev.filter(c => c.id !== cardId));
     } catch (err) {
       console.error('Error eliminando carta', err);
+      setMsgError('Error al eliminar la carta. Intenta de nuevo.');
     }
   };
 
   // Guarda el mazo completo y muestra popup de éxito (sin redirect)
-  const saveDeck = async (e) => {
-    // previene submit de cualquier formulario padre
-    e?.preventDefault();
-    console.log('▶ saveDeck fired', deck);
-
+  const saveDeck = async () => {
     setSaving(true);
     try {
       await api.put(`/mazos/${mazoId}`, {
@@ -63,12 +77,13 @@ export default function Editor() {
       setMsgSuccess('¡Mazo guardado con éxito!');
     } catch (err) {
       console.error('Error guardando mazo', err);
+      setMsgError('Error al guardar el mazo. Intenta de nuevo.');
     } finally {
       setSaving(false);
     }
   };
 
-  // Deshacer cambios al estado inicial (opcional)
+  // Deshacer cambios a la última versión guardada
   const undoChanges = () => {
     api.get(`/mazos/${mazoId}/cartas`)
       .then(res => setDeck(res.data))
@@ -86,6 +101,20 @@ export default function Editor() {
             type="button"
             onClick={() => setMsgSuccess('')}
             className="ml-4 text-green-700 hover:text-green-900"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* Popup de error */}
+      {msgError && (
+        <div className="fixed top-6 right-6 bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded shadow-lg flex items-center">
+          <span className="flex-1">{msgError}</span>
+          <button
+            type="button"
+            onClick={() => setMsgError('')}
+            className="ml-4 text-red-700 hover:text-red-900"
           >
             ✕
           </button>
