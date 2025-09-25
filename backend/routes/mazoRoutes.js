@@ -7,6 +7,13 @@ const {
   editarMazo,
   eliminarMazo
 } = require('../controllers/mazoController');
+
+const {
+  listarCartasEnMazo,
+  agregarCartaAlMazo,
+  eliminarCartaDelMazo
+} = require('../controllers/mazoCartaController');
+
 const { verificarToken, verificarAdmin } = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -14,6 +21,15 @@ const router = express.Router();
 // públicas
 router.get('/', listarMazos);
 router.get('/:id', obtenerMazoPorId);
+
+// subrutas para cartas dentro del mazo
+const cartaMazoRouter = express.Router({ mergeParams: true });
+
+cartaMazoRouter.get('/', listarCartasEnMazo);
+cartaMazoRouter.post('/', verificarToken, agregarCartaAlMazo);
+cartaMazoRouter.delete('/:cartaId', verificarToken, eliminarCartaDelMazo);
+
+router.use('/:id/cartas', cartaMazoRouter);
 
 // protegidas (solo admin)
 router.post('/', verificarToken, verificarAdmin, crearMazo);
