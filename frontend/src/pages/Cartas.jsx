@@ -1,28 +1,24 @@
 import { useEffect, useState } from 'react';
 import api from '../api';
-import cardsData from '../../backend/cards.json'; // para razas únicas
+import cardsData from '../../backend/cards.json';
 
 export default function Cartas() {
   const [cartas, setCartas] = useState([]);
   const [search, setSearch] = useState('');
-  const [filtros, setFiltros] = useState({
-    tipo: '',
-    coste: '',
-    raza: ''
-  });
+  const [filtros, setFiltros] = useState({ tipo: '', coste: '', raza: '' });
   const [showFilters, setShowFilters] = useState(false);
 
-  // Carga de cartas desde backend
+  // Carga inicial
   useEffect(() => {
     api.get('/cartas')
       .then(res => setCartas(res.data))
       .catch(console.error);
   }, []);
 
-  // Razas únicas desde cards.json
+  // Raza dinámicas
   const razas = Array.from(new Set(cardsData.map(c => c.raza))).sort();
 
-  // Filtrado local
+  // Filtrado
   const term = search.toLowerCase();
   const filtradas = cartas
     .filter(c => c.nombre.toLowerCase().includes(term))
@@ -39,7 +35,7 @@ export default function Cartas() {
     <div className="container mx-auto px-6 py-8">
       <h1 className="text-3xl font-bold mb-6">Listado de Cartas</h1>
 
-      {/* Buscador y filtros */}
+      {/* Buscador + Toggle Filtros */}
       <div className="flex flex-wrap gap-4 mb-6">
         <div className="flex flex-1">
           <input
@@ -51,7 +47,6 @@ export default function Cartas() {
           />
           <button type="button" className="btn rounded-r">Buscar</button>
         </div>
-
         <button
           type="button"
           className="btn-outline"
@@ -61,7 +56,7 @@ export default function Cartas() {
         </button>
       </div>
 
-      {/* Panel de filtros */}
+      {/* Panel Filtros */}
       {showFilters && (
         <div className="mb-6 p-4 border rounded bg-gray-50">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -71,9 +66,7 @@ export default function Cartas() {
               <select
                 className="w-full border px-2 py-1"
                 value={filtros.tipo}
-                onChange={e =>
-                  setFiltros(f => ({ ...f, tipo: e.target.value }))
-                }
+                onChange={e => setFiltros(f => ({ ...f, tipo: e.target.value }))}
               >
                 <option value="">Todos</option>
                 <option value="Aliado">Aliado</option>
@@ -83,16 +76,13 @@ export default function Cartas() {
                 <option value="Oro">Oro</option>
               </select>
             </div>
-
             {/* Coste */}
             <div>
               <label className="block mb-1">Coste</label>
               <select
                 className="w-full border px-2 py-1"
                 value={filtros.coste}
-                onChange={e =>
-                  setFiltros(f => ({ ...f, coste: e.target.value }))
-                }
+                onChange={e => setFiltros(f => ({ ...f, coste: e.target.value }))}
               >
                 <option value="">Todos</option>
                 <option value="Sin coste">Sin coste</option>
@@ -104,22 +94,17 @@ export default function Cartas() {
                 <option value="5+">5 o más</option>
               </select>
             </div>
-
             {/* Raza */}
             <div>
               <label className="block mb-1">Raza</label>
               <select
                 className="w-full border px-2 py-1"
                 value={filtros.raza}
-                onChange={e =>
-                  setFiltros(f => ({ ...f, raza: e.target.value }))
-                }
+                onChange={e => setFiltros(f => ({ ...f, raza: e.target.value }))}
               >
                 <option value="">Todas</option>
                 {razas.map(rz => (
-                  <option key={rz} value={rz}>
-                    {rz}
-                  </option>
+                  <option key={rz} value={rz}>{rz}</option>
                 ))}
               </select>
             </div>
@@ -127,7 +112,7 @@ export default function Cartas() {
         </div>
       )}
 
-      {/* Tabla de cartas */}
+      {/* Tabla */}
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>

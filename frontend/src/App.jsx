@@ -11,7 +11,7 @@ import Editor from './pages/Editor';
 import Profile from './pages/Profile';
 import AdminPanel from './pages/AdminPanel';
 import Forbidden from './pages/Forbidden';
-import Cartas from './pages/Cartas'; // ✅ Import correcto
+import Cartas from './pages/Cartas';
 
 function App() {
   return (
@@ -19,7 +19,7 @@ function App() {
       {/* Rutas públicas */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      <Route path="/cartas" element={<Cartas />} /> {/* ✅ Ruta pública actualizada */}
+      <Route path="/cartas" element={<Cartas />} />  {/* ← ruta pública */}
 
       {/* Rutas protegidas (usuarios y admins) */}
       <Route element={<PrivateRoute allowedRoles={['jugador', 'admin']} />}>
@@ -31,17 +31,17 @@ function App() {
         </Route>
       </Route>
 
-      {/* Rutas solo para admin */}
+      {/* Rutas solo admin */}
       <Route element={<PrivateRoute allowedRoles={['admin']} />}>
         <Route element={<Layout />}>
           <Route path="/admin" element={<AdminPanel />} />
         </Route>
       </Route>
 
-      {/* Página 403 */}
+      {/* 403 */}
       <Route path="/403" element={<Forbidden />} />
 
-      {/* Fallback 404 → redirige a inicio */}
+      {/* Fallback 404 */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
