@@ -23,10 +23,14 @@ async function crearMazo(req, res, next) {
 }
 
 async function listarMazos(req, res, next) {
+  const usuario_id = req.user.id;
   try {
     const result = await pool.query(
       `SELECT id, nombre, descripcion, fecha_creacion
-         FROM mazos`
+         FROM mazos
+        WHERE usuario_id = $1
+      ORDER BY fecha_creacion DESC`,
+      [usuario_id]
     );
     return res.status(200).json(result.rows);
   } catch (err) {
@@ -36,12 +40,14 @@ async function listarMazos(req, res, next) {
 
 async function obtenerMazoPorId(req, res, next) {
   const { id } = req.params;
+  const usuario_id = req.user.id;
   try {
     const result = await pool.query(
       `SELECT id, nombre, descripcion, fecha_creacion
          FROM mazos
-        WHERE id = $1`,
-      [id]
+        WHERE id = $1
+          AND usuario_id = $2`,
+      [id, usuario_id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Mazo no encontrado' });
@@ -54,7 +60,26 @@ async function obtenerMazoPorId(req, res, next) {
 
 async function editarMazo(req, res, next) {
   const { id } = req.params;
+  const usuario_id = req.user.id;
   const { nombre, descripcion, cartas } = req.body;
+
+  // 0) Verificar existencia y ownership
+  try {
+    const owner = await pool.query(
+      `SELECT usuario_id
+         FROM mazos
+        WHERE id = $1`,
+      [id]
+    );
+    if (owner.rows.length === 0) {
+      return res.status(404).json({ error: 'Mazo no encontrado' });
+    }
+    if (owner.rows[0].usuario_id !== usuario_id) {
+      return res.status(403).json({ error: 'No autorizado para modificar este mazo' });
+    }
+  } catch (err) {
+    return next(err);
+  }
 
   const client = await pool.connect();
   try {
@@ -75,7 +100,9 @@ async function editarMazo(req, res, next) {
     if (updates.length) {
       vals.push(id);
       await client.query(
-        `UPDATE mazos SET ${updates.join(', ')} WHERE id = $${idx}`,
+        `UPDATE mazos
+            SET ${updates.join(', ')}
+          WHERE id = $${idx}`,
         vals
       );
     }
@@ -92,9 +119,9 @@ async function editarMazo(req, res, next) {
           [id, ...cartas.map(c => c.id)]
         );
       } else {
-        // si el array viene vacío, borra todo
         await client.query(
-          `DELETE FROM mazo_cartas WHERE mazo_id = $1`,
+          `DELETE FROM mazo_cartas
+             WHERE mazo_id = $1`,
           [id]
         );
       }
@@ -123,14 +150,32 @@ async function editarMazo(req, res, next) {
 
 async function eliminarMazo(req, res, next) {
   const { id } = req.params;
+  const usuario_id = req.user.id;
+
+  // Verificar existencia y ownership
   try {
-    const result = await pool.query(
-      `DELETE FROM mazos WHERE id = $1 RETURNING id`,
+    const owner = await pool.query(
+      `SELECT usuario_id
+         FROM mazos
+        WHERE id = $1`,
       [id]
     );
-    if (result.rows.length === 0) {
+    if (owner.rows.length === 0) {
       return res.status(404).json({ error: 'Mazo no encontrado' });
     }
+    if (owner.rows[0].usuario_id !== usuario_id) {
+      return res.status(403).json({ error: 'No autorizado para eliminar este mazo' });
+    }
+  } catch (err) {
+    return next(err);
+  }
+
+  try {
+    await pool.query(
+      `DELETE FROM mazos
+        WHERE id = $1`,
+      [id]
+    );
     return res.status(204).send();
   } catch (err) {
     next(err);
