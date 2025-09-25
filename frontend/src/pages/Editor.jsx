@@ -1,5 +1,5 @@
 // frontend/src/pages/Editor.jsx
-// frontend/src/pages/Editor.jsx
+
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import CardList from '../components/CardList';
@@ -10,6 +10,7 @@ import api from '../api';
 export default function Editor() {
   const { mazoId } = useParams();
   const navigate = useNavigate();
+
   const [deck, setDeck] = useState([]);
   const [search, setSearch] = useState('');
   const [saving, setSaving] = useState(false);
@@ -22,7 +23,7 @@ export default function Editor() {
       .catch(console.error);
   }, [mazoId]);
 
-  // Agrega carta al mazo (API + estado local)
+  // Agrega carta al mazo
   const addCard = async (card) => {
     try {
       const { data } = await api.post(
@@ -38,7 +39,7 @@ export default function Editor() {
     }
   };
 
-  // Elimina carta del mazo (API + estado local)
+  // Elimina carta del mazo
   const removeCard = async (cardId) => {
     try {
       await api.delete(`/mazos/${mazoId}/cartas/${cardId}`);
@@ -49,7 +50,11 @@ export default function Editor() {
   };
 
   // Guarda el mazo completo y muestra popup de éxito (sin redirect)
-  const saveDeck = async () => {
+  const saveDeck = async (e) => {
+    // previene submit de cualquier formulario padre
+    e?.preventDefault();
+    console.log('▶ saveDeck fired', deck);
+
     setSaving(true);
     try {
       await api.put(`/mazos/${mazoId}`, {
@@ -63,6 +68,13 @@ export default function Editor() {
     }
   };
 
+  // Deshacer cambios al estado inicial (opcional)
+  const undoChanges = () => {
+    api.get(`/mazos/${mazoId}/cartas`)
+      .then(res => setDeck(res.data))
+      .catch(console.error);
+  };
+
   return (
     <div className="container mx-auto px-6 py-8 relative">
 
@@ -71,6 +83,7 @@ export default function Editor() {
         <div className="fixed top-6 right-6 bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded shadow-lg flex items-center">
           <span className="flex-1">{msgSuccess}</span>
           <button
+            type="button"
             onClick={() => setMsgSuccess('')}
             className="ml-4 text-green-700 hover:text-green-900"
           >
@@ -83,13 +96,16 @@ export default function Editor() {
         <h1 className="text-3xl font-bold text-primary">Editor de Mazos</h1>
         <div className="flex gap-4">
           <button
+            type="button"
             className="btn"
             onClick={saveDeck}
             disabled={saving}
           >
             {saving ? 'Guardando…' : 'Guardar Mazo'}
           </button>
+
           <button
+            type="button"
             className="btn-outline"
             onClick={() => navigate('/dashboard')}
           >
@@ -107,10 +123,22 @@ export default function Editor() {
             onChange={e => setSearch(e.target.value)}
             className="flex-1 px-4 py-2 border border-gray-300 rounded-l"
           />
-          <button className="btn rounded-r">Buscar</button>
+          <button type="button" className="btn rounded-r">
+            Buscar
+          </button>
         </div>
-        <button className="btn-outline">Filtros Avanzados</button>
-        <button className="btn">Deshacer</button>
+
+        <button type="button" className="btn-outline">
+          Filtros Avanzados
+        </button>
+
+        <button
+          type="button"
+          className="btn"
+          onClick={undoChanges}
+        >
+          Deshacer
+        </button>
       </div>
 
       <div className="editor-container grid grid-cols-1 md:grid-cols-2 gap-8">
