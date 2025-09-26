@@ -14,7 +14,6 @@ export default function Dashboard() {
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
 
-  // 1) Carga los mazos del usuario al montar
   useEffect(() => {
     api.get('/mazos')
       .then(res => setMazos(res.data))
@@ -25,44 +24,50 @@ export default function Dashboard() {
       .finally(() => setLoading(false));
   }, []);
 
-  // 2) Crear nuevo mazo con nombre y descripción
   const handleCreate = async () => {
     if (!newName.trim()) {
       setError('El nombre del mazo es obligatorio');
       return;
     }
-
     try {
       const payload = {
         nombre: newName,
         descripcion: newDesc,
-        // Si tu backend asigna fecha automáticamente, elimina esta línea:
         fecha_creacion: new Date().toISOString().split('T')[0]
       };
       const { data } = await api.post('/mazos', payload);
       navigate(`/editor/${data.id}`);
     } catch (err) {
       console.error('Error creando mazo:', err);
-      // Si la API devuelve { error: '…' } en el body:
       const msg = err.response?.data?.error || 'No se pudo crear el mazo. Intenta de nuevo.';
       setError(msg);
     }
   };
 
-  // 3) Editar mazo existente
   const handleEdit = (id) => {
     navigate(`/editor/${id}`);
   };
 
-  // 4) Eliminar mazo tras confirmación
   const handleDelete = async (id) => {
-    if (!window.confirm('¿Eliminar este mazo?')) return;
+    if (!window.confirm('¿Eliminar este mazo y todo su contenido?')) return;
+
     try {
+      // 1) Borra todas las cartas del mazo para evitar FK constraint
+      await api.delete(`/mazos/${id}/cartas`);
+    } catch (cardsErr) {
+      console.warn('No se pudieron eliminar las cartas del mazo:', cardsErr);
+      // seguimos, porque puede que no hubiera cartas
+    }
+
+    try {
+      // 2) Borra el mazo
       await api.delete(`/mazos/${id}`);
+      // 3) Actualiza estado local
       setMazos(prev => prev.filter(m => m.id !== id));
     } catch (err) {
       console.error('Error eliminando mazo:', err);
-      alert('No se pudo eliminar el mazo. Intenta de nuevo.');
+      const msg = err.response?.data?.error || 'No se pudo eliminar el mazo. Intenta de nuevo.';
+      alert(msg);
     }
   };
 
@@ -72,15 +77,12 @@ export default function Dashboard() {
 
   return (
     <div className="container mx-auto px-6 py-8">
-
-      {/* Título y mini-form para crear nuevo mazo */}
+      {/* Header y form creación */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <h1 className="text-3xl font-bold text-primary">Mis Mazos</h1>
 
         <div className="w-full md:w-auto p-4 border rounded bg-gray-50">
-          {error && (
-            <p className="text-sm text-red-600 mb-2">{error}</p>
-          )}
+          {error && <p className="text-sm text-red-600 mb-2">{error}</p>}
           <div className="flex flex-col md:flex-row gap-2">
             <input
               type="text"
@@ -107,41 +109,41 @@ export default function Dashboard() {
       </div>
 
       {/* Lista de mazos */}
-      {mazos.length === 0 ? (
-        <p className="text-gray-600">Aún no tienes mazos. ¡Crea uno para comenzar!</p>
-      ) : (
-        <ul className="space-y-4">
-          {mazos.map(mazo => (
-            <li
-              key={mazo.id}
-              className="flex justify-between items-center p-4 border border-gray-200 rounded-lg bg-white shadow-sm"
-            >
-              <div>
-                <h2 className="text-xl font-semibold">{mazo.nombre}</h2>
-                <p className="text-gray-500">{mazo.descripcion}</p>
-                <p className="text-sm text-gray-400">
-                  Creado: {new Date(mazo.fecha_creacion).toLocaleDateString()}
-                </p>
-              </div>
+      {mazos.length === 0
+        ? <p className="text-gray-600">Aún no tienes mazos. ¡Crea uno para comenzar!</p>
+        : (
+          <ul className="space-y-4">
+            {mazos.map(mazo => (
+              <li
+                key={mazo.id}
+                className="flex justify-between items-center p-4 border border-gray-200 rounded-lg bg-white shadow-sm"
+              >
+                <div>
+                  <h2 className="text-xl font-semibold">{mazo.nombre}</h2>
+                  <p className="text-gray-500">{mazo.descripcion}</p>
+                  <p className="text-sm text-gray-400">
+                    Creado: {new Date(mazo.fecha_creacion).toLocaleDateString()}
+                  </p>
+                </div>
 
-              <div className="flex gap-2">
-                <button
-                  className="btn-sm btn"
-                  onClick={() => handleEdit(mazo.id)}
-                >
-                  Editar
-                </button>
-                <button
-                  className="btn-sm btn-danger"
-                  onClick={() => handleDelete(mazo.id)}
-                >
-                  Eliminar
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+                <div className="flex gap-2">
+                  <button
+                    className="btn-sm btn"
+                    onClick={() => handleEdit(mazo.id)}
+                  >
+                    Editar
+                  </button>
+                  <button
+                    className="btn-sm btn-danger"
+                    onClick={() => handleDelete(mazo.id)}
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
     </div>
   );
 }
