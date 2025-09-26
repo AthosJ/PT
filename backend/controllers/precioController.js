@@ -1,98 +1,102 @@
-//backend/controllers/precioController.js
-const axios   = require('axios');
-const cheerio = require('cheerio');
-const pool    = require('../config/db');
+// backend/controllers/precioController.js
 
-// Normaliza slugs (quita tildes y pone minúscula)
+const axios = require('axios');
+const cheerio = require('cheerio');
+const pool = require('../config/db');
+const slugify = require('slugify');
+const allCards = require('../cards.json');
+
+// Normaliza texto: minúsculas y sin tildes
 function normalize(text) {
   return text
-    .toLowerCase()
+    .toString()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
 }
 
-// Scrapea precio individual vía búsqueda
-async function fetchPriceFromStore(storeUrl, slug) {
+// Scrapea el precio de una carta en una tienda dado el slug
+async function scrapeStore(storeUrl, slug) {
   const url = `${storeUrl}/?s=${encodeURIComponent(slug)}&post_type=product`;
   const { data } = await axios.get(url);
   const $ = cheerio.load(data);
-  const first = $('.products .product').first();
-  const priceText = first.find('.price ins .amount, .price .amount')
+  const product = $('.products .product').first();
+  if (!product.length) return 0;
+  const priceText = product
+    .find('.price ins .amount, .price .amount')
     .first()
     .text()
     .trim();
   return parseInt(priceText.replace(/[^\d]/g, ''), 10) || 0;
 }
 
-// Devuelve precio de una carta buscando en caché o scrapeando
+// Busca precio en caché o scrapea en tiendas
 async function getPriceForSlug(slug) {
-  const norm = normalize(slug);
+  const normSlug = normalize(slug);
 
-  // 1) Revisar caché
-  const cache = await pool.query(
+  // 1) Leer de cache
+  const { rows } = await pool.query(
     `SELECT price_clp, last_updated
        FROM price_cache
       WHERE card_slug = $1;`,
-    [norm]
+    [normSlug]
   );
-  if (cache.rowCount > 0) {
-    const { price_clp, last_updated } = cache.rows[0];
-    // Si es reciente (<24h), devolver
-    const ageHrs = (Date.now() - new Date(last_updated)) / 36e5;
-    if (ageHrs < 24) return price_clp;
+  if (rows.length) {
+    const { price_clp, last_updated } = rows[0];
+    // Si es reciente (<24h), devolvemos:
+    if ((Date.now() - new Date(last_updated)) / 36e5 < 24) {
+      return price_clp;
+    }
   }
 
-  // 2) Scrape en tiendas
-  let price = 0;
-  // Intenta Mylserena
-  try {
-    price = await fetchPriceFromStore('https://mylserena.cl/primera-era/singles-pe', norm);
-  } catch { /* ignora */ }
-  // Si no lo encontró, intenta Laira
-  if (price === 0) {
-    try {
-      price = await fetchPriceFromStore('https://laira.cl/categoria-producto/singles', norm);
-    } catch { /* ignora */ }
+  // 2) Scrapea en Mylserena y Laira
+  let price = await scrapeStore('https://mylserena.cl/primera-era/singles-pe', normSlug);
+  if (!price) {
+    price = await scrapeStore('https://laira.cl/categoria-producto/singles', normSlug);
   }
 
-  // 3) Actualizar caché
+  // 3) Actualiza cache
   await pool.query(
     `INSERT INTO price_cache(card_slug, price_clp, last_updated)
-     VALUES ($1,$2,NOW())
-     ON CONFLICT (card_slug)
-     DO UPDATE SET price_clp = EXCLUDED.price_clp,
-                   last_updated = EXCLUDED.last_updated;`,
-    [norm, price]
+     VALUES($1,$2,NOW())
+     ON CONFLICT(card_slug) DO UPDATE
+       SET price_clp = EXCLUDED.price_clp,
+           last_updated = EXCLUDED.last_updated;`,
+    [normSlug, price]
   );
 
   return price;
 }
 
-// Controller para POST /api/precios
+// Controller: POST /api/precios
 async function getCardPrices(req, res, next) {
   try {
-    const { cards } = req.body; // array de nombres EXACTOS de cards.json
+    const { cards } = req.body;
     if (!Array.isArray(cards)) {
       return res.status(400).json({ error: 'cards debe ser un array de nombres' });
     }
-    // Para cada nombre buscamos su slug en cards.json
-    const allCards = require('../cards.json');
-    const nameToSlug = Object.fromEntries(
-      allCards.map(c => [c.nombre, c.slug])
+
+    // Build map nombre → slug
+    const mapNameToSlug = allCards.reduce((acc, c) => {
+      acc[ normalize(c.nombre) ] = c.slug;
+      return acc;
+    }, {});
+
+    // Para cada nombre en el body, buscamos el slug y luego el precio
+    const result = await Promise.all(
+      cards.map(async rawName => {
+        const normName = normalize(rawName);
+        const slug = mapNameToSlug[normName];
+        if (!slug) {
+          return { name: rawName, price: 0 };
+        }
+        const price = await getPriceForSlug(slug);
+        return { name: rawName, price };
+      })
     );
 
-    const result = {};
-    for (const nombre of cards) {
-      const slug = nameToSlug[nombre];
-      if (!slug) {
-        result[nombre] = 0;
-        continue;
-      }
-      result[nombre] = await getPriceForSlug(slug);
-    }
+    return res.json(result);
 
-    // Responde [{ name, price }]
-    res.json(Object.entries(result).map(([name, price]) => ({ name, price })));
   } catch (err) {
     next(err);
   }
