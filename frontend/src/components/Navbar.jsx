@@ -39,7 +39,7 @@ export default function Navbar() {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    navigate('/login');
+    navigate('/');
   };
 
   // Cálculo protegido de iniciales
