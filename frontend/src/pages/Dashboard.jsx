@@ -9,31 +9,39 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Carga los mazos del usuario al montar
+  // 1) Carga los mazos del usuario al montar
   useEffect(() => {
     api.get('/mazos')
-      .then(res => {
-        setMazos(res.data);
-      })
+      .then(res => setMazos(res.data))
       .catch(err => {
         console.error('Error cargando mazos:', err);
         setError('No se pudieron cargar los mazos');
       })
-      .finally(() => {
-        setLoading(false);
-      });
+      .finally(() => setLoading(false));
   }, []);
 
-  // Navegar al editor de un mazo
+  // 2) Crear nuevo mazo antes de redirigir
+  const handleCreate = async () => {
+    try {
+      // Ajusta el payload si tu endpoint requiere nombre/descr
+      const { data } = await api.post('/mazos', {});
+      navigate(`/editor/${data.id}`);
+    } catch (err) {
+      console.error('Error creando mazo:', err);
+      setError('No se pudo crear el mazo. Intenta de nuevo.');
+    }
+  };
+
+  // 3) Navegar al editor de un mazo existente
   const handleEdit = (id) => {
     navigate(`/editor/${id}`);
   };
 
-  // Eliminar un mazo tras confirmación
+  // 4) Eliminar mazo tras confirmación
   const handleDelete = async (id) => {
-    const confirm = window.confirm('¿Estás seguro de que deseas eliminar este mazo?');
-    if (!confirm) return;
-
+    if (!window.confirm('¿Estás seguro de que deseas eliminar este mazo?')) {
+      return;
+    }
     try {
       await api.delete(`/mazos/${id}`);
       setMazos(prev => prev.filter(m => m.id !== id));
@@ -47,21 +55,18 @@ export default function Dashboard() {
     return <p className="text-center mt-8">Cargando mazos…</p>;
   }
 
-  if (error) {
-    return <p className="text-center mt-8 text-red-600">{error}</p>;
-  }
-
   return (
     <div className="container mx-auto px-6 py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-primary">Mis Mazos</h1>
-        <button
-          className="btn"
-          onClick={() => navigate('/nuevo-mazo')}
-        >
+        <button className="btn" onClick={handleCreate}>
           Crear Nuevo Mazo
         </button>
       </div>
+
+      {error && (
+        <p className="text-center mb-4 text-red-600">{error}</p>
+      )}
 
       {mazos.length === 0 ? (
         <p className="text-gray-600">Aún no tienes mazos. ¡Crea uno para comenzar!</p>
@@ -79,7 +84,6 @@ export default function Dashboard() {
                   Creado: {new Date(mazo.fecha_creacion).toLocaleDateString()}
                 </p>
               </div>
-
               <div className="flex gap-2">
                 <button
                   className="btn-sm btn"
@@ -87,7 +91,6 @@ export default function Dashboard() {
                 >
                   Editar
                 </button>
-
                 <button
                   className="btn-sm btn-danger"
                   onClick={() => handleDelete(mazo.id)}
