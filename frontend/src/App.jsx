@@ -1,4 +1,5 @@
-//frontend/src/App.jsx
+// frontend/src/App.jsx
+
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import PrivateRoute from './components/PrivateRoute';
@@ -16,36 +17,37 @@ import Cartas from './pages/Cartas';
 function App() {
   return (
     <Routes>
-      {/* Rutas públicas */}
+      {/* 1) Páginas públicas SIN layout (sin header/footer) */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      <Route path="/cartas" element={<Cartas />} />  {/* ← ruta pública */}
 
-      {/* Rutas protegidas (usuarios y admins) */}
-      <Route element={<PrivateRoute allowedRoles={['jugador', 'admin']} />}>
-        <Route element={<Layout />}>
+      {/* 2) Páginas que usan Layout (header + footer) */}
+      <Route element={<Layout />}>
+
+        {/* 2.1) Cartas: pública, pero con header/footer */}
+        <Route path="/cartas" element={<Cartas />} />
+
+        {/* 2.2) Rutas protegidas (roles jugador o admin) */}
+        <Route element={<PrivateRoute allowedRoles={['jugador', 'admin']} />}>
           <Route path="/" element={<Home />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/editor/:mazoId" element={<Editor />} />
           <Route path="/profile" element={<Profile />} />
         </Route>
-      </Route>
 
-      {/* Rutas solo admin */}
-      <Route element={<PrivateRoute allowedRoles={['admin']} />}>
-        <Route element={<Layout />}>
+        {/* 2.3) Rutas solo para admin */}
+        <Route element={<PrivateRoute allowedRoles={['admin']} />}>
           <Route path="/admin" element={<AdminPanel />} />
         </Route>
+
+        {/* 2.4) Forbidden */}
+        <Route path="/403" element={<Forbidden />} />
       </Route>
 
-      {/* 403 */}
-      <Route path="/403" element={<Forbidden />} />
-
-      {/* Fallback 404 */}
+      {/* 3) Catch-all (404) → redirigir a Home */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
 
 export default App;
-
