@@ -1,43 +1,38 @@
 // backend/controllers/precioController.js
 
-const axios = require('axios');
+const axios   = require('axios');
 const cheerio = require('cheerio');
-const pool = require('../config/db');
+const pool    = require('../config/db');
 const allCards = require('../cards.json');
 
 /**
- * Normaliza texto a slug:
- * - Minúsculas
- * - Sin tildes
- * - Sin puntuación
- * - Espacios a guiones
+ * 1) Normalize: minúsculas, sin tildes, sin puntuación, espacios→guiones
  */
 function normalize(text) {
   return text
     .toString()
-    .normalize('NFD')                         // descompone acentos
-    .replace(/[\u0300-\u036f]/g, '')          // quita acentos
-    .replace(/['’.,\/#!$%\^&\*;:{}=\-_`~()]/g,'') // quita puntuación
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/['’.,\/#!$%\^&\*;:{}=\-_`~()]/g, '')
     .trim()
     .toLowerCase()
-    .replace(/\s+/g, '-');                   // espacios a guiones
+    .replace(/\s+/g, '-');
 }
 
 /**
- * Scrapea vía búsqueda en la raíz de la tienda.
- * storeRoot: 'https://mylserena.cl' o 'https://laira.cl'
+ * 2) Búsqueda genérica en categoría (Mylserena o Laira)
  */
 async function scrapeStoreSearch(storeRoot, slug) {
   const url = `${storeRoot}/?s=${encodeURIComponent(slug)}&post_type=product`;
   try {
     const { data } = await axios.get(url);
     const $ = cheerio.load(data);
-    const product = $('.products .product').first();
-    if (!product.length) {
-      console.log(`🔍 [Search:${storeRoot}] No encontrado '${slug}'`);
+    const prod = $('.products .product').first();
+    if (!prod.length) {
+      console.log(`🔍 [Search:${storeRoot}] No '${slug}'`);
       return 0;
     }
-    const text = product.find('.price ins .amount, .price .amount').first().text().trim();
+    const text = prod.find('.price ins .amount, .price .amount').first().text().trim();
     const num = parseInt(text.replace(/[^\d]/g, ''), 10) || 0;
     console.log(`✅ [Search:${storeRoot}] '${slug}' → ${num}`);
     return num;
@@ -48,7 +43,7 @@ async function scrapeStoreSearch(storeRoot, slug) {
 }
 
 /**
- * Scrapea directamente la URL de producto en Laira: /producto/{slug}/
+ * 3) Directo en Laira (/producto/{slug}/)
  */
 async function scrapeLairaDirect(slug) {
   const url = `https://laira.cl/producto/${slug}/`;
@@ -60,23 +55,18 @@ async function scrapeLairaDirect(slug) {
     console.log(`✅ [Direct:Laira] '${slug}' → ${num}`);
     return num;
   } catch (err) {
-    console.warn(`🔍 [Direct:Laira] No encontrado '${slug}': ${err.message}`);
+    console.warn(`🔍 [Direct:Laira] No '${slug}': ${err.message}`);
     return 0;
   }
 }
 
 /**
- * Obtiene precio de un slug:
- * 1) Cache
- * 2) Mylserena search
- * 3) Laira direct
- * 4) Laira search
- * 5) Guarda en cache
+ * 4) Cache + scraping para un slug dado
  */
 async function getPriceForSlug(rawSlug) {
   const slug = normalize(rawSlug);
 
-  // 1) Intentar cache
+  // 4.1 Cache
   const { rows } = await pool.query(
     `SELECT price_clp, last_updated FROM price_cache WHERE card_slug = $1`,
     [slug]
@@ -84,13 +74,15 @@ async function getPriceForSlug(rawSlug) {
   if (rows.length) {
     const { price_clp, last_updated } = rows[0];
     const ageHrs = (Date.now() - new Date(last_updated)) / 36e5;
-    if (ageHrs < 24) return price_clp;
+    if (ageHrs < 24) {
+      console.log(`⏱️ Cache válido '${slug}' → ${price_clp}`);
+      return price_clp;
+    }
   }
 
-  // 2) Scrapea Mylserena
+  // 4.2 Scraping
   let price = await scrapeStoreSearch('https://mylserena.cl', slug);
 
-  // 3) Si no, Laira direct + search
   if (!price) {
     price = await scrapeLairaDirect(slug);
     if (!price) {
@@ -98,11 +90,11 @@ async function getPriceForSlug(rawSlug) {
     }
   }
 
-  // 4) Actualizar cache
+  // 4.3 Actualiza cache
   await pool.query(
     `INSERT INTO price_cache(card_slug, price_clp, last_updated)
-       VALUES($1,$2,NOW())
-       ON CONFLICT(card_slug) DO UPDATE
+       VALUES ($1,$2,NOW())
+       ON CONFLICT (card_slug) DO UPDATE
          SET price_clp    = EXCLUDED.price_clp,
              last_updated = EXCLUDED.last_updated;`,
     [slug, price]
@@ -112,9 +104,7 @@ async function getPriceForSlug(rawSlug) {
 }
 
 /**
- * POST /api/precios
- * Recibe { cards: ['Nombre Carta', ...] }
- * Responde [{ name, price }]
+ * 5) Controller POST /api/precios
  */
 async function getCardPrices(req, res, next) {
   try {
@@ -122,28 +112,29 @@ async function getCardPrices(req, res, next) {
     console.log('→ /api/precios payload:', cards);
 
     if (!Array.isArray(cards)) {
-      return res.status(400).json({ error: 'cards debe ser array' });
+      return res.status(400).json({ error: 'cards debe ser array de strings' });
     }
 
-    // Map nombre normalizado → slug
+    // Build map: normalize(nombre) → slug
     const mapNameToSlug = allCards.reduce((acc, c) => {
-      acc[normalize(c.nombre)] = c.slug;
+      acc[ normalize(c.nombre) ] = c.slug;
       return acc;
     }, {});
 
-    // Para cada carta buscamos precio
     const result = await Promise.all(
-      cards.map(async name => {
-        console.log(`  • Procesando "${name}"`);
-        const norm = normalize(name);
-        const slug = mapNameToSlug[norm];
+      cards.map(async rawName => {
+        console.log(`  • Procesando "${rawName}"`);
+        const normName = normalize(rawName);
+        let slug = mapNameToSlug[normName];
+
         if (!slug) {
-          console.warn(`⚠️ No slug para "${name}"`);
-          return { name, price: 0 };
+          console.warn(`⚠️ Sin slug para "${rawName}", fallback a rawName`);
+          slug = rawName;  // fallback: usamos rawName en el scraper
         }
+
         const price = await getPriceForSlug(slug);
-        console.log(`    → Precio ${name}: ${price}`);
-        return { name, price };
+        console.log(`    → Precio ${rawName}: ${price}`);
+        return { name: rawName, price };
       })
     );
 
