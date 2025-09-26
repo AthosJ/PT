@@ -1,4 +1,5 @@
 // frontend/src/pages/Dashboard.jsx
+
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
@@ -8,6 +9,10 @@ export default function Dashboard() {
   const [mazos, setMazos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Campos para nuevo mazo
+  const [newName, setNewName] = useState('');
+  const [newDesc, setNewDesc] = useState('');
 
   // 1) Carga los mazos del usuario al montar
   useEffect(() => {
@@ -20,28 +25,38 @@ export default function Dashboard() {
       .finally(() => setLoading(false));
   }, []);
 
-  // 2) Crear nuevo mazo antes de redirigir
+  // 2) Crear nuevo mazo con nombre y descripción
   const handleCreate = async () => {
+    if (!newName.trim()) {
+      setError('El nombre del mazo es obligatorio');
+      return;
+    }
+
     try {
-      // Ajusta el payload si tu endpoint requiere nombre/descr
-      const { data } = await api.post('/mazos', {});
+      const payload = {
+        nombre: newName,
+        descripcion: newDesc,
+        // Si tu backend asigna fecha automáticamente, elimina esta línea:
+        fecha_creacion: new Date().toISOString().split('T')[0]
+      };
+      const { data } = await api.post('/mazos', payload);
       navigate(`/editor/${data.id}`);
     } catch (err) {
       console.error('Error creando mazo:', err);
-      setError('No se pudo crear el mazo. Intenta de nuevo.');
+      // Si la API devuelve { error: '…' } en el body:
+      const msg = err.response?.data?.error || 'No se pudo crear el mazo. Intenta de nuevo.';
+      setError(msg);
     }
   };
 
-  // 3) Navegar al editor de un mazo existente
+  // 3) Editar mazo existente
   const handleEdit = (id) => {
     navigate(`/editor/${id}`);
   };
 
   // 4) Eliminar mazo tras confirmación
   const handleDelete = async (id) => {
-    if (!window.confirm('¿Estás seguro de que deseas eliminar este mazo?')) {
-      return;
-    }
+    if (!window.confirm('¿Eliminar este mazo?')) return;
     try {
       await api.delete(`/mazos/${id}`);
       setMazos(prev => prev.filter(m => m.id !== id));
@@ -57,17 +72,41 @@ export default function Dashboard() {
 
   return (
     <div className="container mx-auto px-6 py-8">
-      <div className="flex justify-between items-center mb-6">
+
+      {/* Título y mini-form para crear nuevo mazo */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <h1 className="text-3xl font-bold text-primary">Mis Mazos</h1>
-        <button className="btn" onClick={handleCreate}>
-          Crear Nuevo Mazo
-        </button>
+
+        <div className="w-full md:w-auto p-4 border rounded bg-gray-50">
+          {error && (
+            <p className="text-sm text-red-600 mb-2">{error}</p>
+          )}
+          <div className="flex flex-col md:flex-row gap-2">
+            <input
+              type="text"
+              placeholder="Nombre del mazo *"
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              className="flex-1 border px-3 py-2 rounded"
+            />
+            <input
+              type="text"
+              placeholder="Descripción"
+              value={newDesc}
+              onChange={e => setNewDesc(e.target.value)}
+              className="flex-1 border px-3 py-2 rounded"
+            />
+            <button
+              className="btn min-w-[120px]"
+              onClick={handleCreate}
+            >
+              Crear
+            </button>
+          </div>
+        </div>
       </div>
 
-      {error && (
-        <p className="text-center mb-4 text-red-600">{error}</p>
-      )}
-
+      {/* Lista de mazos */}
       {mazos.length === 0 ? (
         <p className="text-gray-600">Aún no tienes mazos. ¡Crea uno para comenzar!</p>
       ) : (
@@ -84,6 +123,7 @@ export default function Dashboard() {
                   Creado: {new Date(mazo.fecha_creacion).toLocaleDateString()}
                 </p>
               </div>
+
               <div className="flex gap-2">
                 <button
                   className="btn-sm btn"
