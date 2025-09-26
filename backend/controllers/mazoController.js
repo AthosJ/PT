@@ -3,10 +3,10 @@ const pool = require('../config/db');
 
 async function crearMazo(req, res, next) {
   const { nombre, descripcion } = req.body;
-  const usuario_id = req.user.id;
+  const usuario_id = req.user?.id;
 
-  if (!nombre) {
-    return res.status(400).json({ error: 'El nombre es obligatorio' });
+  if (!nombre || !usuario_id) {
+    return res.status(400).json({ error: 'Faltan campos obligatorios' });
   }
 
   try {
@@ -63,9 +63,11 @@ async function editarMazo(req, res, next) {
   const { nombre, descripcion, cartas } = req.body;
 
   try {
-    // 0) Verificar ownership
+    // Verificar ownership
     const owner = await pool.query(
-      `SELECT usuario_id FROM mazos WHERE id = $1;`,
+      `SELECT usuario_id
+         FROM mazos
+        WHERE id = $1;`,
       [id]
     );
     if (owner.rowCount === 0) {
@@ -75,7 +77,7 @@ async function editarMazo(req, res, next) {
       return res.status(403).json({ error: 'No autorizado para modificar este mazo' });
     }
 
-    // 1) Actualizar nombre y/o descripción
+    // Actualizar nombre/descr
     const updates = [];
     const values = [];
     let idx = 1;
@@ -95,18 +97,17 @@ async function editarMazo(req, res, next) {
       );
     }
 
-    // 2) Sincronizar cartas si llega array “cartas”
+    // Sincronizar cartas (igual que antes)
     if (Array.isArray(cartas)) {
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
-        // a) Borrar vínculos que ya no existen
         if (cartas.length) {
-          const placeholders = cartas.map((_, i) => `$${i + 2}`).join(',');
+          const ph = cartas.map((_, i) => `$${i + 2}`).join(',');
           await client.query(
             `DELETE FROM mazo_cartas
                WHERE mazo_id = $1
-                 AND carta_id NOT IN (${placeholders});`,
+                 AND carta_id NOT IN (${ph});`,
             [id, ...cartas.map(c => c.id)]
           );
         } else {
@@ -115,7 +116,6 @@ async function editarMazo(req, res, next) {
             [id]
           );
         }
-        // b) Upsert cada carta
         for (const { id: cartaId, cantidad } of cartas) {
           await client.query(
             `INSERT INTO mazo_cartas (mazo_id, carta_id, cantidad)
@@ -145,9 +145,11 @@ async function eliminarMazo(req, res, next) {
   const usuario_id = req.user.id;
 
   try {
-    // 0) Verificar ownership
+    // Verificar ownership
     const owner = await pool.query(
-      `SELECT usuario_id FROM mazos WHERE id = $1;`,
+      `SELECT usuario_id
+         FROM mazos
+        WHERE id = $1;`,
       [id]
     );
     if (owner.rowCount === 0) {
@@ -157,11 +159,19 @@ async function eliminarMazo(req, res, next) {
       return res.status(403).json({ error: 'No autorizado para eliminar este mazo' });
     }
 
-    // 1) Elimina el mazo; las cartas se borran en cascada
+    // 1) Borra primero todos los vínculos en mazo_cartas
     await pool.query(
-      `DELETE FROM mazos WHERE id = $1;`,
+      `DELETE FROM mazo_cartas
+         WHERE mazo_id = $1;`,
       [id]
     );
+    // 2) Borra el mazo
+    await pool.query(
+      `DELETE FROM mazos
+         WHERE id = $1;`,
+      [id]
+    );
+
     return res.sendStatus(204);
   } catch (err) {
     next(err);
@@ -175,4 +185,3 @@ module.exports = {
   editarMazo,
   eliminarMazo
 };
-
