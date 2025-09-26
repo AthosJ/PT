@@ -1,10 +1,9 @@
 // backend/routes/precioRoutes.js
 
-const express = require('express');
-const { getCardPrices } = require('../controllers/precioController');
-const router = express.Router();
+const express            = require('express');
+const { getCardPrices }  = require('../controllers/precioController');
+const router             = express.Router();
 
-// POST /api/precios
 router.post('/precios', getCardPrices);
 
 module.exports = router;

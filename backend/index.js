@@ -1,10 +1,12 @@
 // backend/index.js
+
 const path = require('path');
 const envFile = process.env.NODE_ENV === 'test' ? '.env.test' : '.env';
 require('dotenv').config({ path: path.resolve(__dirname, envFile) });
 
 const express = require('express');
 const cors = require('cors');
+const cron = require('node-cron');
 
 const authRoutes          = require('./routes/authRoutes');
 const cartaRoutes         = require('./routes/cartaRoutes');
@@ -33,6 +35,16 @@ app.use('/api/decks', mazoRoutes);
 app.use('/api/recomendaciones', recomendacionRoutes);
 // Precios: POST /api/precios
 app.use('/api', precioRoutes);
+
+// Cron job: cada 6 horas actualiza los precios de cartas
+cron.schedule('0 */6 * * *', () => {
+  console.log('🔄 Cron: actualizando precios de cartas');
+  // El archivo scripts/updatePrices.js debe exportar una función async
+  const updatePrices = require('./scripts/updatePrices');
+  updatePrices()
+    .then(() => console.log('✅ Precios actualizados'))
+    .catch(err => console.error('❌ Error actualizando precios:', err));
+});
 
 // Manejador global de errores
 app.use((err, req, res, next) => {
